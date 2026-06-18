@@ -1,0 +1,24 @@
+# 敏感配置文件（含Cookie）
+config.json
+
+# 扫描结果和日志（可能含视频信息）
+收藏夹扫描结果.json
+收藏夹扫描日志.txt
+收藏夹移动日志.txt
+收藏夹分类统计.xlsx
+收藏夹分类详情.json
+收藏夹分类日志.txt
+
+# 浏览器cookie
+.bilibili_cookies.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 测试脚本
+test_move.py
+get_cookies.py

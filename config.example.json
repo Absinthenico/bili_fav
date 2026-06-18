@@ -1,0 +1,25 @@
+{
+    "_说明": "复制此文件为 config.json，填入你自己的信息",
+
+    "cookies": {
+        "SESSDATA": "你的SESSDATA",
+        "bili_jct": "你的bili_jct",
+        "DedeUserID": "你的用户ID",
+        "DedeUserID__ckMd5": "你的ckMd5",
+        "buvid3": "你的buvid3",
+        "buvid4": "你的buvid4",
+        "b_nut": "你的b_nut",
+        "b_lsid": "你的b_lsid"
+    },
+    "folders": {
+        "默认": 0,
+        "菜单2": 0,
+        "知识提升": 0,
+        "找工作": 0,
+        "跑步电台": 0,
+        "教程": 0,
+        "人文知识": 0,
+        "人生自我": 0,
+        "有趣娱乐": 0
+    }
+}

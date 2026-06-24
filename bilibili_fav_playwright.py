@@ -15,10 +15,15 @@ B站收藏夹整理 — 浏览器自动化版本
   playwright install chromium
 
 用法：
+  python bilibili_fav_playwright.py --setup             # 首次使用，初始化配置
   python bilibili_fav_playwright.py --scan              # 扫描
   python bilibili_fav_playwright.py --scan --test 50    # 测试扫描
   python bilibili_fav_playwright.py --move              # 移动
   python bilibili_fav_playwright.py --move --test 10    # 测试移动
+
+配置文件：
+  config.json  — 登录凭证（--setup 自动生成）
+  rule.json    — 分类规则（--setup 生成模板，可自行编辑）
 ==========================================================
 """
 

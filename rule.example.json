@@ -1,0 +1,23 @@
+{
+    "_说明": "分类规则模板 — 复制为 rule.json 并修改",
+
+    "default_folder": "默认",
+
+    "multi_page": {
+        "enabled": true,
+        "threshold": 3,
+        "target_folder": "教程"
+    },
+
+    "up_map": {
+        "UP主名称": "目标收藏夹"
+    },
+
+    "keyword_rules": [
+        {
+            "keywords": ["关键词1", "关键词2"],
+            "target_folder": "目标收藏夹",
+            "scope": "all"
+        }
+    ]
+}

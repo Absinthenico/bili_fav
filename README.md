@@ -33,19 +33,49 @@ pip install requests playwright
 playwright install chromium
 ```
 
-### 2. 配置
-
-复制配置模板并填入你的信息：
+### 2. 初始化配置（首次使用）
 
 ```bash
-cp config.example.json config.json
+python bilibili_fav_playwright.py --setup
 ```
 
-编辑 `config.json`，填入：
-- **cookies**：从浏览器 F12 → Application → Cookies 中获取
-- **folders**：你的收藏夹名称和对应的 FID（收藏夹页面 URL 中的数字）
+浏览器会自动打开，登录B站后按回车，脚本会自动：
+- 提取 Cookie
+- 获取所有收藏夹及 FID
+- 生成 `config.json`（登录凭证）
+- 生成 `rule.json`（分类规则模板）
 
-### 3. 运行
+### 3. 编辑分类规则
+
+编辑 `rule.json` 自定义你的分类逻辑：
+
+```json
+{
+    "default_folder": "默认",
+    "multi_page": {
+        "enabled": true,
+        "threshold": 3,
+        "target_folder": "教程"
+    },
+    "up_map": {
+        "UP主名称": "目标收藏夹"
+    },
+    "keyword_rules": [
+        {
+            "keywords": ["关键词1", "关键词2"],
+            "target_folder": "目标收藏夹",
+            "scope": "all"
+        }
+    ]
+}
+```
+
+- **default_folder**：未匹配视频的归入收藏夹
+- **multi_page**：多分P视频自动归类（可关闭）
+- **up_map**：UP主 → 收藏夹直接映射
+- **keyword_rules**：关键词匹配规则，scope 支持 `"all"`（标题+简介）或 `"title"`（仅标题）
+
+### 4. 运行
 
 ```bash
 # 扫描阶段：分析所有视频并生成分类文档
@@ -65,8 +95,10 @@ python bilibili_fav_playwright.py --move --test 10
 
 ```
 ├── bilibili_fav_playwright.py   # 主程序（Playwright 浏览器自动化）
-├── config.json                  # 你的配置（敏感，不入 Git）
+├── config.json                  # 登录凭证（敏感，不入 Git）
 ├── config.example.json          # 配置模板
+├── rule.json                    # 分类规则（可自由修改，不入 Git）
+├── rule.example.json            # 规则模板
 ├── get_cookies.py               # Cookie 获取助手
 ├── test_move.py                 # 移动功能测试
 └── 收藏夹分类需要.md             # 原始需求文档

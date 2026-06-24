@@ -30,18 +30,55 @@ import argparse
 from datetime import datetime
 from collections import Counter, defaultdict
 
-# 加载config.json
-_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-try:
-    with open(_config_path, "r", encoding="utf-8") as f:
-        _config_file = json.load(f)
-except FileNotFoundError:
-    print(f"  ❌ 未找到 config.json，请复制 config.example.json 并填入你的信息")
+# ============================================================
+# 配置加载
+# ============================================================
+
+_dir = os.path.dirname(os.path.abspath(__file__))
+
+def _load_json(filename, required=True):
+    """加载同目录下的 JSON 文件"""
+    path = os.path.join(_dir, filename)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        if required:
+            print(f"  ❌ 未找到 {filename}")
+            raise SystemExit(1)
+        return None
+
+_config_file = _load_json("config.json")
+_rule_file = _load_json("rule.json")
+
+# 验证 rule.json 结构
+def _validate_rule(rule):
+    """验证规则文件结构，返回是否有效"""
+    errors = []
+    if "up_map" not in rule:
+        errors.append("缺少 up_map 字段")
+    if "keyword_rules" not in rule:
+        errors.append("缺少 keyword_rules 字段")
+    for i, kw_rule in enumerate(rule.get("keyword_rules", [])):
+        if "keywords" not in kw_rule:
+            errors.append(f"keyword_rules[{i}] 缺少 keywords 字段")
+        if "target_folder" not in kw_rule:
+            errors.append(f"keyword_rules[{i}] 缺少 target_folder 字段")
+    if errors:
+        print("  ❌ rule.json 格式错误:")
+        for e in errors:
+            print(f"     - {e}")
+        return False
+    return True
+
+if not _validate_rule(_rule_file):
     raise SystemExit(1)
 
-# ============================================================
-# 配置
-# ============================================================
+# 收藏夹ID映射（来自config.json）
+FOLDERS = _config_file["folders"]
+
+# 分类规则（来自rule.json）
+RULES = _rule_file
 
 CONFIG = {
     "output_dir": "D:\\工作",
@@ -49,48 +86,6 @@ CONFIG = {
     "scan_log": "D:\\工作\\收藏夹扫描日志.txt",
     "move_log": "D:\\工作\\收藏夹移动日志.txt",
     "cookie_file": "D:\\工作\\.bilibili_cookies.json",
-
-    # 收藏夹ID（从config.json读取）
-    "folders": _config_file["folders"],
-
-    # UP主归类规则
-    "up_map": {
-        "网络小白_Uncle城": "知识提升", "SYSTEM-RAMOS-ZDY": "知识提升",
-        "3Blue1Brown": "知识提升", "林亦LYi": "知识提升",
-        "小约翰可汗": "跑步电台", "马督工": "跑步电台",
-        "小德MOMO": "跑步电台", "小Lin说": "跑步电台",
-        "认知进化的Vivian": "跑步电台", "Larry想做技术大佬": "跑步电台",
-        "芳斯塔芙": "跑步电台", "大冰直播间": "跑步电台",
-        "中国食品报融媒体": "跑步电台", "戒社": "跑步电台",
-        "地球知识局": "人文知识", "睿画三国": "人文知识",
-        "苏老拳_": "人文知识", "漫士沉思录": "人文知识",
-        "医学科普联盟": "人文知识", "冷却报告": "人文知识",
-        "赛雷三分钟": "人文知识", "毕导": "人文知识",
-        "毕的二阶导": "人文知识", "画渣花小烙": "人文知识",
-        "差评君": "人文知识", "短的差评君": "人文知识",
-        "GaryVee加里维纳查克": "人生自我", "意识星球住民BeAware": "人生自我",
-        "我才是熊猫大G": "有趣娱乐", "超级小桀的日常": "有趣娱乐",
-        "神奇的维C": "有趣娱乐", "Evelinas": "有趣娱乐",
-        "沫子瞪片": "有趣娱乐",
-    },
-
-    # 关键词规则: (关键词列表, 目标收藏夹, 匹配范围)
-    "keyword_rules": [
-        (["做菜", "烹饪", "菜谱", "食谱", "做饭", "家常菜", "炒菜", "炖菜",
-          "烘焙", "蛋糕", "面包", "甜点", "甜品", "料理", "食材", "调味",
-          "红烧", "清蒸", "爆炒", "凉拌", "煲汤", "火锅", "烧烤", "腌制",
-          "厨房", "厨艺", "下厨", "大厨", "美食制作", "美食教程"], "菜单2", "all"),
-        (["炉石传说", "炉石", "hearthstone", "酒馆战棋"], "有趣娱乐", "all"),
-        (["编程", "代码", "github.com", "程序", "算法", "python", "java", "javascript",
-          "c++", "rust", "golang", "前端", "后端", "全栈", "开发", "debug",
-          "git", "linux", "服务器", "数据库", "sql", "api", "框架", "开源",
-          "ai工具", "chatgpt", "大模型", "llm", "机器学习", "深度学习",
-          "人工智能", "神经网络", "transformer", "prompt",
-          "leetcode", "力扣", "数据结构", "设计模式", "架构"], "知识提升", "all"),
-        (["就业", "求职", "面试", "简历", "秋招", "春招", "校招", "社招",
-          "offer", "薪资", "程序员面试", "技术面试", "计算机就业", "转行",
-          "职业规划", "裁员", "互联网寒冬", "找工作"], "找工作", "all"),
-    ],
 }
 
 
@@ -99,19 +94,25 @@ CONFIG = {
 # ============================================================
 
 def classify_video(video: dict) -> dict:
-    """对单个视频进行分类"""
+    """对单个视频进行分类（规则来自 rule.json）"""
     title = video.get("title", "")
     upper_name = video.get("upper", {}).get("name", "").strip()
     page_count = video.get("page_count", 1)
     desc = video.get("intro", "")
 
+    default_folder = RULES.get("default_folder", "默认")
+
     # 规则1: UP主
-    if upper_name in CONFIG["up_map"]:
-        return {"target_folder": CONFIG["up_map"][upper_name],
+    up_map = RULES.get("up_map", {})
+    if upper_name in up_map:
+        return {"target_folder": up_map[upper_name],
                 "match_rule": f"UP主匹配: {upper_name}", "confidence": 1.0}
 
     # 规则2: 关键词
-    for keywords, folder, scope in CONFIG["keyword_rules"]:
+    for kw_rule in RULES.get("keyword_rules", []):
+        keywords = kw_rule["keywords"]
+        folder = kw_rule["target_folder"]
+        scope = kw_rule.get("scope", "all")
         for kw in keywords:
             kw_lower = kw.lower()
             text = (title + " " + desc).lower() if scope == "all" else title.lower()
@@ -121,11 +122,12 @@ def classify_video(video: dict) -> dict:
                         "match_rule": f"关键词: '{kw}' ({source})", "confidence": 0.9}
 
     # 规则3: 多分P
-    if page_count > 3:
-        return {"target_folder": "教程",
+    mp = RULES.get("multi_page", {})
+    if mp.get("enabled", False) and page_count > mp.get("threshold", 3):
+        return {"target_folder": mp.get("target_folder", default_folder),
                 "match_rule": f"多分P ({page_count}P)", "confidence": 0.7}
 
-    return {"target_folder": "默认", "match_rule": "无匹配", "confidence": 0.0}
+    return {"target_folder": default_folder, "match_rule": "无匹配", "confidence": 0.0}
 
 
 def tag_video(video: dict) -> dict:
@@ -371,8 +373,9 @@ def phase_scan(headless=False, test_count=0):
                 return
 
         # 获取所有视频
-        print(f"\n  获取默认收藏夹视频...")
-        all_videos = fetch_all_videos(page, CONFIG["folders"]["默认"])
+        default_folder = RULES.get("default_folder", "默认")
+        print(f"\n  获取「{default_folder}」收藏夹视频...")
+        all_videos = fetch_all_videos(page, FOLDERS[default_folder])
         total = len(all_videos)
         print(f"  ✅ 共 {total} 个视频")
 
@@ -496,7 +499,8 @@ def phase_move(headless=False, test_count=0):
             page.goto("https://www.bilibili.com")
             time.sleep(2)
 
-        src_fid = CONFIG["folders"]["默认"]
+        default_folder = RULES.get("default_folder", "默认")
+        src_fid = FOLDERS[default_folder]
         log_file = open(CONFIG["move_log"], "a", encoding="utf-8")
         log_file.write(f"\n{'='*60}\n移动会话: {datetime.now()}\n待处理: {len(to_move)}\n{'='*60}\n\n")
 
@@ -509,12 +513,12 @@ def phase_move(headless=False, test_count=0):
             target = entry["classify"]["target_folder"]
             rule = entry["classify"]["match_rule"]
 
-            if target == "默认":
+            if target == default_folder:
                 entry["move_status"] = "success"
                 success += 1
                 continue
 
-            tar_fid = CONFIG["folders"].get(target)
+            tar_fid = FOLDERS.get(target)
             if not tar_fid:
                 entry["move_status"] = "failed"
                 entry["move_error"] = f"无fid: {target}"
@@ -569,8 +573,149 @@ def phase_move(headless=False, test_count=0):
 # 入口
 # ============================================================
 
+def phase_setup():
+    """
+    初始化配置：自动获取 Cookie 和收藏夹列表，生成 config.json 和 rule.json
+    """
+    from playwright.sync_api import sync_playwright
+
+    print("\n" + "=" * 60)
+    print("  B站收藏夹整理 - 初始化配置")
+    print("=" * 60)
+
+    config_path = os.path.join(_dir, "config.json")
+    rule_path = os.path.join(_dir, "rule.json")
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/126.0.0.0 Safari/537.36",
+        )
+        page = context.new_page()
+
+        # Step 1: 登录
+        print("\n  📌 第1步：登录B站")
+        print("  浏览器即将打开，请登录你的B站账号...")
+        page.goto("https://passport.bilibili.com/login")
+        input("\n  登录完成后，按回车继续...")
+
+        # 验证登录
+        page.goto("https://api.bilibili.com/x/web-interface/nav")
+        content = page.content()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if not json_match:
+            print("  ❌ 无法获取登录信息，请重试")
+            browser.close()
+            return
+
+        nav_data = json.loads(json_match.group())
+        if nav_data.get("code") != 0:
+            print("  ❌ 未登录或登录失败，请重试")
+            browser.close()
+            return
+
+        uname = nav_data["data"].get("uname", "未知")
+        mid = nav_data["data"].get("mid", 0)
+        print(f"  ✅ 登录成功: {uname} (UID: {mid})")
+
+        # Step 2: 提取 Cookie
+        print("\n  📌 第2步：提取 Cookie")
+        cookies = context.cookies()
+        cookie_dict = {}
+        for c in cookies:
+            if c["name"] in ["SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5",
+                             "buvid3", "buvid4", "b_nut", "b_lsid"]:
+                cookie_dict[c["name"]] = c["value"]
+
+        if "DedeUserID" not in cookie_dict:
+            cookie_dict["DedeUserID"] = str(mid)
+
+        print(f"  ✅ 获取到 {len(cookie_dict)} 个 Cookie 字段")
+
+        # Step 3: 获取收藏夹列表
+        print("\n  📌 第3步：获取收藏夹列表")
+        page.goto(f"https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={mid}")
+        content = page.content()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+        folders = {}
+        if json_match:
+            folder_data = json.loads(json_match.group())
+            if folder_data.get("code") == 0:
+                folder_list = folder_data.get("data", {}).get("list", [])
+                for f in folder_list:
+                    folders[f["title"]] = f["id"]
+                    print(f"    📁 {f['title']} (FID: {f['id']}, 视频数: {f['media_count']})")
+                print(f"  ✅ 共 {len(folders)} 个收藏夹")
+            else:
+                print(f"  ⚠ 获取收藏夹失败: {folder_data.get('message')}")
+        else:
+            print("  ⚠ 解析收藏夹列表失败")
+
+        # Step 4: 生成 config.json
+        print("\n  📌 第4步：生成 config.json")
+        config = {
+            "cookies": cookie_dict,
+            "folders": folders
+        }
+
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        print(f"  ✅ 配置已保存到: {config_path}")
+
+        # 保存浏览器 cookie（备用）
+        full_cookies = context.cookies()
+        with open(CONFIG["cookie_file"], "w", encoding="utf-8") as f:
+            json.dump(full_cookies, f, ensure_ascii=False, indent=2)
+        print(f"  ✅ 浏览器 Cookie 已保存到: {CONFIG['cookie_file']}")
+
+        browser.close()
+
+    # Step 5: 生成 rule.json（如果不存在）
+    if not os.path.exists(rule_path):
+        print("\n  📌 第5步：生成 rule.json 分类规则模板")
+        folder_names = list(folders.keys())
+        default_folder = folder_names[0] if folder_names else "默认"
+
+        rule_template = {
+            "_说明": "分类规则配置 — 修改此文件即可自定义分类逻辑，无需改代码",
+            "default_folder": default_folder,
+            "multi_page": {
+                "enabled": False,
+                "threshold": 3,
+                "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder
+            },
+            "up_map": {},
+            "keyword_rules": [
+                {
+                    "keywords": ["关键词1", "关键词2"],
+                    "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder,
+                    "scope": "all"
+                }
+            ]
+        }
+
+        with open(rule_path, "w", encoding="utf-8") as f:
+            json.dump(rule_template, f, ensure_ascii=False, indent=2)
+        print(f"  ✅ 规则模板已保存到: {rule_path}")
+        print(f"  💡 请编辑 rule.json 添加你的分类规则，然后再运行 --scan")
+    else:
+        print(f"\n  ℹ rule.json 已存在，跳过生成")
+
+    print("\n" + "=" * 60)
+    print("  🎉 初始化完成！")
+    print("  下一步:")
+    print("    1. 编辑 rule.json 配置分类规则（可选）")
+    print("    2. python bilibili_fav_playwright.py --scan")
+    print("=" * 60)
+
+
 def main():
     parser = argparse.ArgumentParser(description="B站收藏夹整理（浏览器自动化版）")
+    parser.add_argument("--setup", action="store_true", help="初始化配置（自动获取Cookie和收藏夹）")
     parser.add_argument("--scan", action="store_true", help="扫描收藏夹")
     parser.add_argument("--move", action="store_true", help="执行移动")
     parser.add_argument("--test", type=int, default=0, help="测试模式，只处理前N个")
@@ -578,15 +723,18 @@ def main():
 
     args = parser.parse_args()
 
-    if not args.scan and not args.move:
+    if not args.setup and not args.scan and not args.move:
         parser.print_help()
         print("\n  示例:")
-        print("    python bilibili_fav_playwright.py --scan")
-        print("    python bilibili_fav_playwright.py --scan --test 50")
-        print("    python bilibili_fav_playwright.py --move")
-        print("    python bilibili_fav_playwright.py --move --test 10")
+        print("    python bilibili_fav_playwright.py --setup            # 首次使用，初始化配置")
+        print("    python bilibili_fav_playwright.py --scan             # 扫描收藏夹")
+        print("    python bilibili_fav_playwright.py --scan --test 50   # 测试扫描")
+        print("    python bilibili_fav_playwright.py --move             # 执行移动")
+        print("    python bilibili_fav_playwright.py --move --test 10   # 测试移动")
         return
 
+    if args.setup:
+        phase_setup()
     if args.scan:
         phase_scan(headless=args.headless, test_count=args.test)
     if args.move:

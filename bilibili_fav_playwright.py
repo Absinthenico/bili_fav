@@ -645,12 +645,25 @@ def phase_setup():
         # Step 1: 登录
         print("\n  📌 第1步：登录B站")
         print("  浏览器即将打开，请登录你的B站账号...")
+        print("  ⚠ 请勿手动关闭浏览器窗口！")
         page.goto("https://passport.bilibili.com/login")
         input("\n  登录完成后，按回车继续...")
 
+        # 检查浏览器是否还活着
+        try:
+            page.title()
+        except Exception:
+            print("  ❌ 浏览器已关闭，请重新运行 --setup（不要手动关闭浏览器）")
+            return
+
         # 验证登录
-        page.goto("https://api.bilibili.com/x/web-interface/nav")
-        content = page.content()
+        try:
+            page.goto("https://api.bilibili.com/x/web-interface/nav")
+            content = page.content()
+        except Exception:
+            print("  ❌ 浏览器已关闭，请重新运行 --setup（不要手动关闭浏览器）")
+            return
+
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if not json_match:
             print("  ❌ 无法获取登录信息，请重试")
@@ -683,8 +696,12 @@ def phase_setup():
 
         # Step 3: 获取收藏夹列表
         print("\n  📌 第3步：获取收藏夹列表")
-        page.goto(f"https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={mid}")
-        content = page.content()
+        try:
+            page.goto(f"https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={mid}")
+            content = page.content()
+        except Exception:
+            print("  ❌ 浏览器已关闭，请重新运行 --setup（不要手动关闭浏览器）")
+            return
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
 
         folders = {}

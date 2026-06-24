@@ -41,22 +41,29 @@ from collections import Counter, defaultdict
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-def _load_json(filename, required=True):
-    """加载同目录下的 JSON 文件"""
+# 全局变量，由 load_config() 填充
+FOLDERS = None
+RULES = None
+
+CONFIG = {
+    "output_dir": "D:\\工作",
+    "scan_json": "D:\\工作\\收藏夹扫描结果.json",
+    "scan_log": "D:\\工作\\收藏夹扫描日志.txt",
+    "move_log": "D:\\工作\\收藏夹移动日志.txt",
+    "cookie_file": "D:\\工作\\.bilibili_cookies.json",
+}
+
+
+def _load_json(filename):
+    """加载同目录下的 JSON 文件，不存在返回 None"""
     path = os.path.join(_dir, filename)
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        if required:
-            print(f"  ❌ 未找到 {filename}")
-            raise SystemExit(1)
         return None
 
-_config_file = _load_json("config.json")
-_rule_file = _load_json("rule.json")
 
-# 验证 rule.json 结构
 def _validate_rule(rule):
     """验证规则文件结构，返回是否有效"""
     errors = []
@@ -76,22 +83,26 @@ def _validate_rule(rule):
         return False
     return True
 
-if not _validate_rule(_rule_file):
-    raise SystemExit(1)
 
-# 收藏夹ID映射（来自config.json）
-FOLDERS = _config_file["folders"]
+def load_config():
+    """加载 config.json 和 rule.json，供 --scan / --move 使用"""
+    global FOLDERS, RULES
 
-# 分类规则（来自rule.json）
-RULES = _rule_file
+    config_data = _load_json("config.json")
+    if not config_data:
+        print("  ❌ 未找到 config.json，请先运行: python bilibili_fav_playwright.py --setup")
+        raise SystemExit(1)
 
-CONFIG = {
-    "output_dir": "D:\\工作",
-    "scan_json": "D:\\工作\\收藏夹扫描结果.json",
-    "scan_log": "D:\\工作\\收藏夹扫描日志.txt",
-    "move_log": "D:\\工作\\收藏夹移动日志.txt",
-    "cookie_file": "D:\\工作\\.bilibili_cookies.json",
-}
+    rule_data = _load_json("rule.json")
+    if not rule_data:
+        print("  ❌ 未找到 rule.json，请先运行: python bilibili_fav_playwright.py --setup")
+        raise SystemExit(1)
+
+    if not _validate_rule(rule_data):
+        raise SystemExit(1)
+
+    FOLDERS = config_data["folders"]
+    RULES = rule_data
 
 
 # ============================================================
@@ -365,6 +376,8 @@ def phase_scan(headless=False, test_count=0):
     ╚══════════════════════════════════════════════════════════╝
     """)
 
+    load_config()
+
     with sync_playwright() as p:
         browser, context = get_browser_context(p, headless=headless)
         page = context.new_page()
@@ -468,6 +481,8 @@ def phase_move(headless=False, test_count=0):
     ║          阶段2：移动视频（浏览器模式）                   ║
     ╚══════════════════════════════════════════════════════════╝
     """)
+
+    load_config()
 
     # 读取文档
     try:
@@ -578,6 +593,32 @@ def phase_move(headless=False, test_count=0):
 # 入口
 # ============================================================
 
+def _write_rule_template(rule_path, folder_names, default_folder):
+    """生成 rule.json 模板"""
+    rule_template = {
+        "_说明": "分类规则配置 — 修改此文件即可自定义分类逻辑，无需改代码",
+        "default_folder": default_folder,
+        "multi_page": {
+            "enabled": False,
+            "threshold": 3,
+            "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder
+        },
+        "up_map": {},
+        "keyword_rules": [
+            {
+                "keywords": ["关键词1", "关键词2"],
+                "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder,
+                "scope": "all"
+            }
+        ]
+    }
+
+    with open(rule_path, "w", encoding="utf-8") as f:
+        json.dump(rule_template, f, ensure_ascii=False, indent=2)
+    print(f"  ✅ 规则模板已保存到: {rule_path}")
+    print(f"  💡 请编辑 rule.json 添加你的分类规则，然后再运行 --scan")
+
+
 def phase_setup():
     """
     初始化配置：自动获取 Cookie 和收藏夹列表，生成 config.json 和 rule.json
@@ -679,36 +720,20 @@ def phase_setup():
 
         browser.close()
 
-    # Step 5: 生成 rule.json（如果不存在）
-    if not os.path.exists(rule_path):
-        print("\n  📌 第5步：生成 rule.json 分类规则模板")
-        folder_names = list(folders.keys())
-        default_folder = folder_names[0] if folder_names else "默认"
+    # Step 5: 生成 rule.json
+    folder_names = list(folders.keys())
+    default_folder = folder_names[0] if folder_names else "默认"
 
-        rule_template = {
-            "_说明": "分类规则配置 — 修改此文件即可自定义分类逻辑，无需改代码",
-            "default_folder": default_folder,
-            "multi_page": {
-                "enabled": False,
-                "threshold": 3,
-                "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder
-            },
-            "up_map": {},
-            "keyword_rules": [
-                {
-                    "keywords": ["关键词1", "关键词2"],
-                    "target_folder": folder_names[1] if len(folder_names) > 1 else default_folder,
-                    "scope": "all"
-                }
-            ]
-        }
-
-        with open(rule_path, "w", encoding="utf-8") as f:
-            json.dump(rule_template, f, ensure_ascii=False, indent=2)
-        print(f"  ✅ 规则模板已保存到: {rule_path}")
-        print(f"  💡 请编辑 rule.json 添加你的分类规则，然后再运行 --scan")
+    if os.path.exists(rule_path):
+        print(f"\n  ⚠ rule.json 已存在")
+        confirm = input("  是否覆盖？输入 y 确认，其他跳过: ").strip().lower()
+        if confirm != "y":
+            print("  ℹ 已跳过 rule.json，保留现有规则")
+        else:
+            _write_rule_template(rule_path, folder_names, default_folder)
     else:
-        print(f"\n  ℹ rule.json 已存在，跳过生成")
+        print("\n  📌 第5步：生成 rule.json 分类规则模板")
+        _write_rule_template(rule_path, folder_names, default_folder)
 
     print("\n" + "=" * 60)
     print("  🎉 初始化完成！")
